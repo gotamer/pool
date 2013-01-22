@@ -1,74 +1,65 @@
 package gopool
 
-import "errors"
-
-type Resource struct {
-	Payload interface{}
-//	UseTime int
-}
+//import "errors"
 
 type pool struct {
-	count int
 	max int
-//	min int // TODO support min?
-	resources chan Resource
-//	maxIdleTime int // TODO support an idle time?
+	resources chan interface{}
 	create func() (interface{})
-	destroy func(Resource)
+	destroy func(interface{})
 }
 
-func Initialize(max int, create func() interface{}, destroy func(Resource)) (pool) {
-	p := pool{}
-	p.count = 0
-	p.create = create
+/*
+ * Creates a new resource pool
+ */
+func Initialize(max int, create func() (interface{}), destroy func(interface{}) ()) (*pool) {
+	p := new(pool)
 	p.max = max
+	p.resources = make(chan interface{}, max)
+	for i := 0; i<max; i++ {
+		resource := create()
+		p.resources <- resource
+	}
+	p.create = create
 	p.destroy = destroy
-	p.resources = make(chan Resource, 10)
+
 	return p
 }
 
-func (p *pool) Drain() {
-	println("draining pool")
-	println(len(p.resources))
-	for len(p.resources) > 0 {
-		resource := <-p.resources
-		p.destroy(resource)
-	}
+/*
+ * Obtain a resource from the pool
+ */
+func (p *pool) Acquire() (interface {}) {
+	return <-p.resources
 }
 
-func (p *pool) Acquire() (error, Resource) {
-	select {
-	case resource := <-p.resources:
-		// resource available
-		println("Obtained free resource")
-		return nil, resource
-	default:
-		// resource not immediately available
-		if p.count < p.max {
-			// if we have less resources than max attempt to create a new resource
-			resource := Resource{}
-			val := p.create()
-			resource.Payload = val
-			if (val != nil) {
-				p.count++
-				resource.Payload = val
-				println("Resource created and returned")
-				return nil, resource
-			} else {
-				println("Could not create new resource")
-				return errors.New("Could not create new resource"), Resource{}
-			}
-		} else {
-			// wait for a resource to become available
-			resource := <-p.resources
-			println("Previously created resource returned")
-			return nil, resource
+/*
+ * Returns a resource back in to the pool
+ */
+func (p *pool) Release(resource interface{}) {
+	p.resources <- resource
+}
+
+/*
+ * Remove a resource from the pool.  This is helpful if the resource
+ * has gone bad.  A new resource will be created in it's place.
+ */
+func (p *pool) Destroy(resource interface{}) {
+	p.destroy(resource)
+	p.resources <- p.create()
+}
+
+/*
+ * Remove all resources from the pool and call the destroy method on each of
+ * them.
+ */
+func (p *pool) Drain() {
+	for {
+		select {
+		case r := <-p.resources:
+			p.destroy(r)
+		default:
+			return
 		}
 	}
-	return errors.New("Could not acquire or create resource"), Resource{}
-}
-
-func (p *pool) Release(resource Resource) {
-	go func(){ p.resources <- resource; println("put back"); println(len(p.resources)) }()
-	println("Resource returned to pool")
 }

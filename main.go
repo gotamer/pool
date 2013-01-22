@@ -1,61 +1,52 @@
 package main
 
-import "time"
-
-import "./gopool"
+import (
+	 "./gopool"
+	 "time"
+	 "fmt"
+)
 
 func main() {
 	create := func() (interface{}) {
-		time.Sleep(time.Millisecond * 100)
-		return "hello world"
+		t := time.Now()
+		return t.String()
 	}
-	destroy := func(gopool.Resource) {
-		println("bye bye world")
+	destroy := func(r interface{}) {
+		fmt.Printf("destroyed: %s\n", r.(string))
 	}
+	pool := gopool.Initialize(5, create, destroy)
 
-	myPool := gopool.Initialize(10, create, destroy)
+	r1 := pool.Acquire()
+	fmt.Println(r1.(string))
+	go func() {
+		time.Sleep(1000 * time.Millisecond)
+		pool.Release(r1)
+	}()
+	r2 := pool.Acquire()
+	fmt.Println(r2.(string))
+	
+	r3 := pool.Acquire()
+	fmt.Println(r3.(string))
+	
+	r4 := pool.Acquire()
+	fmt.Println(r4.(string))
+	
+	r5 := pool.Acquire()
+	fmt.Println(r5.(string))
+	
+	r6 := pool.Acquire()
+	fmt.Println(r6.(string))
+	
+	//pool.Destroy(r6)
 
-	err, resource1 := myPool.Acquire()
-	if (err == nil) {
-		msg := resource1.Payload
-		println(msg.(string))
-	} else {
-		println(err)
-	}
-	go func() { time.Sleep(time.Millisecond * 1000); myPool.Release(resource1) }()
+	pool.Release(r6)
+	pool.Release(r5)
+	pool.Release(r4)
+	pool.Release(r3)
+	pool.Release(r2)
 
-	err, resource2 := myPool.Acquire()
-	if (err == nil) {
-		msg := resource2.Payload
-		println(msg.(string))
-	} else {
-		println(err)
-	}
-	go func() { time.Sleep(time.Millisecond * 1000); myPool.Release(resource2) }()
+	pool.Drain()
 
-	err, resource3 := myPool.Acquire()
-	if (err == nil) {
-		msg := resource3.Payload
-		println(msg.(string))
-	} else {
-		println(err)
-	}
-
-	err, resource4 := myPool.Acquire()
-	if (err == nil) {
-		msg := resource4.Payload
-		println(msg.(string))
-	} else {
-		println(err)
-	}
-	myPool.Release(resource3)
-	myPool.Release(resource4)
-
-	time.Sleep(time.Millisecond * 1000)
-
-	myPool.Drain()
-
-	time.Sleep(time.Millisecond * 1000)
 
 }
 
