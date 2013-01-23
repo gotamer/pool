@@ -1,7 +1,5 @@
 package gopool
 
-//import "errors"
-
 type pool struct {
 	max int
 	resources chan interface{}
@@ -62,4 +60,5 @@ func (p *pool) Drain() {
 			return
 		}
 	}
+	close(p.resources)
 }
