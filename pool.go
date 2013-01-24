@@ -29,7 +29,8 @@ func Initialize(max int, create func() (interface{}), destroy func(interface{}) 
 }
 
 /*
- * Obtain a resource from the pool
+ * Obtain a resource from the pool.  Wait indefinately until there is a
+ * resource available.
  */
 func (p *pool) Acquire() (interface {}) {
 	return <-p.resources
@@ -37,7 +38,7 @@ func (p *pool) Acquire() (interface {}) {
 
 /*
  * Obtain a resource from the pool but only wait for a specified duration.
- * If the duration expires return nil
+ * If the duration expires return nil.
  */
 func (p *pool) AcquireWithTimeout(timeout time.Duration) (interface {}) {
 	var resource interface{}
