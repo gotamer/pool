@@ -14,7 +14,7 @@ func main() {
   destroy := func(resource interface{}) {
     // clean up resource
   }
-  pool := Initialize(5, create, destroy) // create a pool of 5 resources
+  pool := gopool.Initialize(5, create, destroy) // create a pool of 5 resources
   resource := pool.Acquire() // obtain the resource
   // use resource ...
   pool.Release(resource) // return resource to the pool
