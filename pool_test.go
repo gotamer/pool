@@ -1,6 +1,9 @@
 package gopool
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestIntialize(t *testing.T) {
 	create := func() (interface{}) {
@@ -47,6 +50,20 @@ func TestDrain(t *testing.T) {
 	p.Drain()
 	if (i != 5) {
 		t.Errorf("Drain did not call the destroy function 5 times.  Destroy was called %d times", i)
+	}
+}
+
+func TestAcquireWithTimeout(t *testing.T) {
+	create := func() (interface{}) {
+		return "test"
+	}
+	destroy := func(interface{}) {
+	}
+	p := Initialize(1, create, destroy)
+	p.Acquire()
+	r2 := p.AcquireWithTimeout(time.Millisecond * 1)
+	if (r2 != nil) {
+		t.Errorf("A timed out acquire should return nil")
 	}
 }
 

@@ -1,5 +1,9 @@
 package gopool
 
+import (
+	"time"
+)
+
 type pool struct {
 	max int
 	resources chan interface{}
@@ -29,6 +33,20 @@ func Initialize(max int, create func() (interface{}), destroy func(interface{}) 
  */
 func (p *pool) Acquire() (interface {}) {
 	return <-p.resources
+}
+
+/*
+ * Obtain a resource from the pool but only wait for a specified duration.
+ * If the duration expires return nil
+ */
+func (p *pool) AcquireWithTimeout(timeout time.Duration) (interface {}) {
+	var resource interface{}
+	select {
+	case resource = <-p.resources:
+	case <- time.After(timeout):
+		return nil
+	}
+	return resource
 }
 
 /*
