@@ -1,11 +1,11 @@
-# Gopool - A generic resource pool for golang
+# pool - A generic resource pool for golang
 
 ### Example Usage
 
 ```go
 package main
 
-import "gopool"
+import "pool"
 
 func main() {
   create := func() (interface{}) {
@@ -14,11 +14,11 @@ func main() {
   destroy := func(resource interface{}) {
     // clean up resource
   }
-  pool := gopool.Initialize(5, create, destroy) // create a pool of 5 resources
-  resource := pool.Acquire() // obtain the resource
+  rpool := pool.Initialize(5, create, destroy) // create a pool of 5 resources
+  resource := rpool.Acquire() // obtain the resource
   // use resource ...
-  pool.Release(resource) // return resource to the pool
-  pool.Drain() // free up all resources
+  rpool.Release(resource) // return resource to the pool
+  rpool.Drain() // free up all resources
 }
 ```
 
