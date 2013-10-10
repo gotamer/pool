@@ -18,7 +18,7 @@ func init() {
 	destroy := func(resource interface{}) {
 		// clean up resource
 	}
-	P = pool.Initialize(5, create, destroy) // create a pool of 5 resources
+	P = pool.Initialize(5, 3, create, destroy) // create a pool of 5 resources
 }
 
 func final() {
@@ -28,7 +28,7 @@ func final() {
 func main() {
 	for i := 0; i < 20; i++ {
 		resource := P.Acquire() // obtain the resource
-		fmt.Println("Resource: ", resource)
+		fmt.Println("Resource: ", resource, " Count: ", P.Count, " Inuse: ", P.Inuse)
 		if i%2 == 0 {
 			P.Destroy(resource)
 		} else {
