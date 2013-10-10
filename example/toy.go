@@ -4,41 +4,68 @@ package main
 import (
 	"fmt"
 	"github.com/gotamer/pool"
+	"sync"
+	"time"
 )
 
 var (
-	P  *pool.Pool
 	no int
+	wg sync.WaitGroup
 )
+
+type resource_symulator struct {
+	id int
+}
 
 func init() {
 	create := func() interface{} {
-		return test()
+		return resourceNew()
 	}
 	destroy := func(resource interface{}) {
-		// clean up resource
+		resourceDel(resource.(resource_symulator))
 	}
-	P = pool.Initialize(5, create, destroy) // create a pool of 5 resources
+	pool.Initialize("db", 5, 3, create, destroy) // create a pool of 5 resources
 }
 
 func final() {
+	P := pool.Get("db")
 	P.Drain() // free up all resources
 }
 
 func main() {
 	for i := 0; i < 20; i++ {
-		resource := P.Acquire() // obtain the resource
-		fmt.Println("Resource: ", resource)
-		if i%2 == 0 {
-			P.Destroy(resource)
-		} else {
-			P.Release(resource)
-		}
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			work(i)
+		}(i)
 	}
+	wg.Wait()
 	final()
 }
 
-func test() int {
+func work(i int) {
+	fmt.Println("Start Work id: ", i)
+	P := pool.Get("db")
+	resource := P.Acquire() // obtain the resource
+	if i%2 == 0 {
+		time.Sleep(time.Microsecond * 1)
+	} else {
+		time.Sleep(time.Microsecond * 2)
+	}
+	fmt.Println("Work id: ", i, " Resource id: ", resource, " Count: ", P.Count, " Inuse: ", P.Inuse)
+	P.Release(resource)
+	fmt.Println("End Work id: ", i)
+}
+
+func resourceNew() (r resource_symulator) {
 	no++
-	return no
+	r.id = no
+	time.Sleep(time.Microsecond * 1)
+	fmt.Println("Resource New: ", r.id)
+	return
+}
+
+func resourceDel(r resource_symulator) {
+	fmt.Println("Resource Del: ", r.id)
 }

@@ -2,7 +2,7 @@ package pool
 
 import (
 	"testing"
-	"time"
+	//"time"
 )
 
 func TestIntialize(t *testing.T) {
@@ -11,7 +11,7 @@ func TestIntialize(t *testing.T) {
 	}
 	destroy := func(interface{}) {
 	}
-	Initialize("db", 1, create, destroy)
+	Initialize("db", 3, 1, create, destroy)
 	p := Name("db")
 	msg := p.Acquire()
 	if msg.(string) != "test" {
@@ -27,18 +27,34 @@ func TestAcquireRelease(t *testing.T) {
 	}
 	destroy := func(interface{}) {
 	}
-	Initialize("db", 5, create, destroy)
+	Initialize("db", 50, 10, create, destroy)
 	p := Name("db")
-	if len(p.resources) != 5 {
-		t.Errorf("Pool size incorrect. Should be 5 but is %d", len(p.resources))
+	if len(p.resources) != 10 {
+		t.Errorf("Pool size incorrect. Should be 10 but is %d", len(p.resources))
 	}
 	msg := p.Acquire()
-	if len(p.resources) != 4 {
-		t.Errorf("Pool size incorrect. Should be 4 but is %d", len(p.resources))
+	if len(p.resources) != 9 {
+		t.Errorf("Pool size incorrect. Should be 9 but is %d", len(p.resources))
 	}
 	p.Release(msg)
-	if len(p.resources) != 5 {
-		t.Errorf("Pool size incorrect. Should be 5 but is %d", len(p.resources))
+	if len(p.resources) != 10 {
+		t.Errorf("Pool size incorrect. Should be 10 but is %d", len(p.resources))
+	}
+	var iface interface{}
+	for i := 0; i < 55; i++ {
+		if r := p.Acquire(); r != iface {
+			dbuse[i] = r
+		}
+	}
+	for _, v := range dbuse {
+		p.Release(v)
+	}
+
+	if len(p.resources) < 10 {
+		t.Errorf("Pool size incorrect. Should be 10 or more but is %d", len(p.resources))
+	}
+	if len(p.resources) > 50 {
+		t.Errorf("Pool size incorrect. Should be 50 or less but is %d", len(p.resources))
 	}
 
 	for i := 0; i < 6; i++ {
@@ -57,7 +73,7 @@ func TestDrain(t *testing.T) {
 	destroy := func(interface{}) {
 		i++
 	}
-	Initialize("db", 5, create, destroy)
+	Initialize("db", 50, 5, create, destroy)
 	p := Name("db")
 	p.Drain()
 	if i != 5 {
@@ -65,6 +81,7 @@ func TestDrain(t *testing.T) {
 	}
 }
 
+/*
 func TestAcquireWithTimeout(t *testing.T) {
 	create := func() interface{} {
 		return "test"
@@ -79,3 +96,4 @@ func TestAcquireWithTimeout(t *testing.T) {
 		t.Errorf("A timed out acquire should return nil")
 	}
 }
+*/
