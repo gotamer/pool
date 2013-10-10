@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-type Pool struct {
+type pool struct {
 	max       int
 	resources chan interface{}
 	create    func() interface{}
@@ -12,10 +12,10 @@ type Pool struct {
 }
 
 /*
- * Creates a new resource Pool
+ * Creates a new resource pool
  */
-func Initialize(max int, create func() interface{}, destroy func(interface{})) *Pool {
-	p := new(Pool)
+func Initialize(max int, create func() interface{}, destroy func(interface{})) *pool {
+	p := new(pool)
 	p.max = max
 	p.resources = make(chan interface{}, max)
 	for i := 0; i < max; i++ {
@@ -29,18 +29,18 @@ func Initialize(max int, create func() interface{}, destroy func(interface{})) *
 }
 
 /*
- * Obtain a resource from the Pool.  Wait indefinately until there is a
+ * Obtain a resource from the pool.  Wait indefinately until there is a
  * resource available.
  */
-func (p *Pool) Acquire() interface{} {
+func (p *pool) Acquire() interface{} {
 	return <-p.resources
 }
 
 /*
- * Obtain a resource from the Pool but only wait for a specified duration.
+ * Obtain a resource from the pool but only wait for a specified duration.
  * If the duration expires return nil.
  */
-func (p *Pool) AcquireWithTimeout(timeout time.Duration) interface{} {
+func (p *pool) AcquireWithTimeout(timeout time.Duration) interface{} {
 	var resource interface{}
 	select {
 	case resource = <-p.resources:
@@ -51,26 +51,26 @@ func (p *Pool) AcquireWithTimeout(timeout time.Duration) interface{} {
 }
 
 /*
- * Returns a resource back in to the Pool
+ * Returns a resource back in to the pool
  */
-func (p *Pool) Release(resource interface{}) {
+func (p *pool) Release(resource interface{}) {
 	p.resources <- resource
 }
 
 /*
- * Remove a resource from the Pool.  This is helpful if the resource
+ * Remove a resource from the pool.  This is helpful if the resource
  * has gone bad.  A new resource will be created in it's place.
  */
-func (p *Pool) Destroy(resource interface{}) {
+func (p *pool) Destroy(resource interface{}) {
 	p.destroy(resource)
 	p.resources <- p.create()
 }
 
 /*
- * Remove all resources from the Pool and call the destroy method on each of
+ * Remove all resources from the pool and call the destroy method on each of
  * them.
  */
-func (p *Pool) Drain() {
+func (p *pool) Drain() {
 	for {
 		select {
 		case r := <-p.resources:
