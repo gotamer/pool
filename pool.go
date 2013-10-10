@@ -1,12 +1,16 @@
 package pool
 
 import (
+	"log"
 	"sync"
 	"time"
 )
 
+var pools = make(map[string]*Pool)
+
 type Pool struct {
 	mx        sync.RWMutex
+	Id        uint
 	Count     uint
 	Inuse     uint
 	max       uint
@@ -19,7 +23,7 @@ type Pool struct {
 /*
  * Creates a new resource Pool
  */
-func Initialize(max uint, min uint, create func() interface{}, destroy func(interface{})) *Pool {
+func Initialize(name string, max uint, min uint, create func() interface{}, destroy func(interface{})) {
 	p := new(Pool)
 	p.max = max
 	p.min = min
@@ -28,22 +32,21 @@ func Initialize(max uint, min uint, create func() interface{}, destroy func(inte
 	p.destroy = destroy
 	for i := uint(0); i < min; i++ {
 		p.New()
+		pools[name] = p
 	}
-	return p
 }
 
 func (p *Pool) New() {
-	p.mx.RLock()
-	if p.Count < p.max {
-		p.mx.RUnlock()
-		p.mx.Lock()
-		p.Count++
-		resource := p.create()
-		p.resources <- resource
-		p.mx.Unlock()
-	} else {
-		p.mx.RUnlock()
-	}
+	p.mx.Lock()
+	p.Count++
+	p.Id = p.Count
+	resource := p.create()
+	p.resources <- resource
+	p.mx.Unlock()
+}
+
+func Get(name string) (p *Pool) {
+	return pools[name]
 }
 
 /*
@@ -51,18 +54,28 @@ func (p *Pool) New() {
  * resource available.
  */
 func (p *Pool) Acquire() interface{} {
-	p.mx.RLock()
+Waiting:
+	p.mx.Lock()
+	defer p.mx.Unlock()
 	if p.Inuse < p.Count {
-		p.mx.RUnlock()
-		p.mx.Lock()
 		p.Inuse++
-		p.mx.Unlock()
-		return <-p.resources
+	} else if p.Count < p.max {
+		resource := p.create()
+		p.resources <- resource
+		p.Count++
+		p.Id = p.Count
+		p.Inuse++
+	} else if p.Count >= p.max {
+		var i interface{}
+		return i
 	} else {
-		p.mx.RUnlock()
-		p.New()
-		return <-p.resources
+		p.mx.Unlock()
+		goto Waiting
 	}
+	if p.Count < p.min {
+		go p.New()
+	}
+	return <-p.resources
 }
 
 /*
@@ -83,16 +96,20 @@ func (p *Pool) AcquireWithTimeout(timeout time.Duration) interface{} {
  * Returns a resource back in to the Pool
  */
 func (p *Pool) Release(resource interface{}) {
+	log.Println("Start Release: ", resource)
 	p.mx.Lock()
-	p.Inuse--
-	if p.Count-p.Inuse >= p.min {
-		p.Inuse++
-		p.mx.Unlock()
-		p.Destroy(resource)
+	defer p.mx.Unlock()
+	log.Println("Release Unlocked: ", resource)
+	if p.Count-p.Inuse > p.min {
+		log.Println("Release Destroy: ", resource)
+		p.destroy(resource)
+		p.Count--
 	} else {
+		log.Println("Release add to resources: ", resource)
 		p.resources <- resource
-		p.mx.Unlock()
 	}
+	p.Inuse--
+	log.Println("Resource Count: ", p.Count)
 }
 
 /*
@@ -102,9 +119,9 @@ func (p *Pool) Release(resource interface{}) {
 func (p *Pool) Destroy(resource interface{}) {
 	p.mx.Lock()
 	defer p.mx.Unlock()
+	p.destroy(resource)
 	p.Count--
 	p.Inuse--
-	p.destroy(resource)
 }
 
 /*
