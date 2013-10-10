@@ -11,12 +11,15 @@ func TestIntialize(t *testing.T) {
 	}
 	destroy := func(interface{}) {
 	}
-	p := Initialize(1, create, destroy)
+	Initialize("db", 1, create, destroy)
+	p := Name("db")
 	msg := p.Acquire()
 	if msg.(string) != "test" {
 		t.Errorf("did not receive \"test\" == %s", msg.(string))
 	}
 }
+
+var dbuse = make(map[int]interface{})
 
 func TestAcquireRelease(t *testing.T) {
 	create := func() interface{} {
@@ -24,7 +27,8 @@ func TestAcquireRelease(t *testing.T) {
 	}
 	destroy := func(interface{}) {
 	}
-	p := Initialize(5, create, destroy)
+	Initialize("db", 5, create, destroy)
+	p := Name("db")
 	if len(p.resources) != 5 {
 		t.Errorf("Pool size incorrect. Should be 5 but is %d", len(p.resources))
 	}
@@ -36,6 +40,13 @@ func TestAcquireRelease(t *testing.T) {
 	if len(p.resources) != 5 {
 		t.Errorf("Pool size incorrect. Should be 5 but is %d", len(p.resources))
 	}
+
+	for i := 0; i < 6; i++ {
+		dbuse[i] = p.Acquire()
+	}
+	for _, v := range dbuse {
+		p.Release(v)
+	}
 }
 
 func TestDrain(t *testing.T) {
@@ -46,7 +57,8 @@ func TestDrain(t *testing.T) {
 	destroy := func(interface{}) {
 		i++
 	}
-	p := Initialize(5, create, destroy)
+	Initialize("db", 5, create, destroy)
+	p := Name("db")
 	p.Drain()
 	if i != 5 {
 		t.Errorf("Drain did not call the destroy function 5 times.  Destroy was called %d times", i)
@@ -59,7 +71,8 @@ func TestAcquireWithTimeout(t *testing.T) {
 	}
 	destroy := func(interface{}) {
 	}
-	p := Initialize(1, create, destroy)
+	Initialize("db", 1, create, destroy)
+	p := Name("db")
 	p.Acquire()
 	r2 := p.AcquireWithTimeout(time.Millisecond * 1)
 	if r2 != nil {

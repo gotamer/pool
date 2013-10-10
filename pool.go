@@ -4,8 +4,10 @@ import (
 	"time"
 )
 
+var pools = make(map[string]*pool)
+
 type pool struct {
-	max       int
+	max       uint
 	resources chan interface{}
 	create    func() interface{}
 	destroy   func(interface{})
@@ -14,18 +16,26 @@ type pool struct {
 /*
  * Creates a new resource pool
  */
-func Initialize(max int, create func() interface{}, destroy func(interface{})) *pool {
+func Initialize(name string, max uint, create func() interface{}, destroy func(interface{})) {
 	p := new(pool)
 	p.max = max
+	p.create = create
+	p.destroy = destroy
 	p.resources = make(chan interface{}, max)
-	for i := 0; i < max; i++ {
+	for i := uint(0); i < max; i++ {
 		resource := create()
 		p.resources <- resource
 	}
-	p.create = create
-	p.destroy = destroy
+	pools[name] = p
+}
 
-	return p
+func (p *pool) add() {
+	resource := p.create()
+	p.resources <- resource
+}
+
+func Name(name string) *pool {
+	return pools[name]
 }
 
 /*
