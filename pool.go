@@ -1,3 +1,4 @@
+// A generic resource pool
 package pool
 
 import (
