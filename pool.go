@@ -21,7 +21,7 @@ type pool struct {
 /*
  * Creates a new resource Pool
  */
-func Initialize(name string, max uint, min uint, create func() interface{}, destroy func(interface{})) {
+func Initialize(name string, min uint, max uint, create func() interface{}, destroy func(interface{})) {
 	p := new(pool)
 	p.max = max
 	p.min = min
@@ -29,9 +29,11 @@ func Initialize(name string, max uint, min uint, create func() interface{}, dest
 	p.create = create
 	p.destroy = destroy
 	for i := uint(0); i < min; i++ {
-		p.New()
-		pools[name] = p
+		p.count++
+		resource := p.create()
+		p.resources <- resource
 	}
+	pools[name] = p
 }
 
 func (p *pool) New() {

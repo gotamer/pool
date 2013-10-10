@@ -11,7 +11,7 @@ func TestIntialize(t *testing.T) {
 	}
 	destroy := func(interface{}) {
 	}
-	Initialize("db", 3, 1, create, destroy)
+	Initialize("db", 1, 3, create, destroy)
 	p := Name("db")
 	msg := p.Acquire()
 	if msg.(string) != "test" {
@@ -27,7 +27,7 @@ func TestAcquireRelease(t *testing.T) {
 	}
 	destroy := func(interface{}) {
 	}
-	Initialize("db", 50, 10, create, destroy)
+	Initialize("db", 10, 50, create, destroy)
 	p := Name("db")
 	if len(p.resources) != 10 {
 		t.Errorf("Pool size incorrect. Should be 10 but is %d", len(p.resources))
@@ -73,7 +73,7 @@ func TestDrain(t *testing.T) {
 	destroy := func(interface{}) {
 		i++
 	}
-	Initialize("db", 50, 5, create, destroy)
+	Initialize("db", 5, 50, create, destroy)
 	p := Name("db")
 	p.Drain()
 	if i != 5 {
