@@ -1,4 +1,4 @@
-# pool - A generic resource pool for golang
+# pool - A generic resource pool for go (golang)
 
 ### Example Usage
 
@@ -7,19 +7,23 @@ package main
 
 import "pool"
 
+func init(){
+	create := func() (interface{}) {
+	  return "resource" // return a resource
+	}
+	destroy := func(resource interface{}) {
+	  // clean up resource
+	}
+	// create a pool named "myDB" with min 5 and max 10 resources
+	pool.Initialize("myDB", 5, 10, create, destroy) 	
+}
+
 func main() {
-  create := func() (interface{}) {
-    return "resource" // return a resource
-  }
-  destroy := func(resource interface{}) {
-    // clean up resource
-  }
-  // create a pool named "myDB" with min 5 and max 10 resources
-  rpool := pool.Initialize("myDB", 5, 10, create, destroy) 
-  resource := rpool.Acquire() // obtain the resource
-  // use resource ...
-  rpool.Release(resource) // return resource to the pool
-  rpool.Drain() // free up all resources
+	rp := pool.Name("myDB")
+	resource := rp.Resource() // obtain the resource
+	// use resource ... db what ever
+	rp.Release(resource) // return resource to the pool
+	rp.Drain() // free up all resources
 }
 ```
 

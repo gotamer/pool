@@ -47,7 +47,7 @@ func main() {
 func work(i int) {
 	fmt.Println("Start Work id: ", i)
 	P := pool.Name("db")
-	resource := P.Acquire() // obtain the resource
+	resource := P.Resource() // obtain the resource
 	if resource == nil {
 		fmt.Println("Not enough resources to run: ", i)
 	} else {

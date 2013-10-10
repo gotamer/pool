@@ -37,7 +37,7 @@ func Initialize(name string, min uint, max uint, create func() interface{}, dest
 	pools[name] = p
 }
 
-func (p *pool) New() {
+func (p *pool) add() {
 	p.mx.Lock()
 	p.count++
 	resource := p.create()
@@ -53,7 +53,7 @@ func Name(name string) (p *pool) {
  * Obtain a resource from the Pool.
  * Returns nil if there are no more resources available (Set pool.max)
  */
-func (p *pool) Acquire() interface{} {
+func (p *pool) Resource() interface{} {
 Waiting:
 	p.mx.Lock()
 	defer p.mx.Unlock()
@@ -71,7 +71,7 @@ Waiting:
 		goto Waiting
 	}
 	if p.count < p.min {
-		go p.New()
+		go p.add()
 	}
 	return <-p.resources
 }

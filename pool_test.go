@@ -13,7 +13,7 @@ func TestIntialize(t *testing.T) {
 	}
 	Initialize("db", 1, 3, create, destroy)
 	p := Name("db")
-	msg := p.Acquire()
+	msg := p.Resource()
 	if msg.(string) != "test" {
 		t.Errorf("did not receive \"test\" == %s", msg.(string))
 	}
@@ -21,7 +21,7 @@ func TestIntialize(t *testing.T) {
 
 var dbuse = make(map[int]interface{})
 
-func TestAcquireRelease(t *testing.T) {
+func TestResourceRelease(t *testing.T) {
 	create := func() interface{} {
 		return "test"
 	}
@@ -32,7 +32,7 @@ func TestAcquireRelease(t *testing.T) {
 	if len(p.resources) != 10 {
 		t.Errorf("Pool size incorrect. Should be 10 but is %d", len(p.resources))
 	}
-	msg := p.Acquire()
+	msg := p.Resource()
 	if len(p.resources) != 9 {
 		t.Errorf("Pool size incorrect. Should be 9 but is %d", len(p.resources))
 	}
@@ -42,7 +42,7 @@ func TestAcquireRelease(t *testing.T) {
 	}
 	var iface interface{}
 	for i := 0; i < 55; i++ {
-		if r := p.Acquire(); r != iface {
+		if r := p.Resource(); r != iface {
 			dbuse[i] = r
 		}
 	}
@@ -58,7 +58,7 @@ func TestAcquireRelease(t *testing.T) {
 	}
 
 	for i := 0; i < 6; i++ {
-		dbuse[i] = p.Acquire()
+		dbuse[i] = p.Resource()
 	}
 	for _, v := range dbuse {
 		p.Release(v)
@@ -90,7 +90,7 @@ func TestAcquireWithTimeout(t *testing.T) {
 	}
 	Initialize("db", 1, create, destroy)
 	p := Name("db")
-	p.Acquire()
+	p.Resource()
 	r2 := p.AcquireWithTimeout(time.Millisecond * 1)
 	if r2 != nil {
 		t.Errorf("A timed out acquire should return nil")
