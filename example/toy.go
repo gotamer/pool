@@ -24,11 +24,11 @@ func init() {
 	destroy := func(resource interface{}) {
 		resourceDel(resource.(resource_symulator))
 	}
-	pool.Initialize("db", 5, 3, create, destroy) // create a pool of 5 resources
+	pool.Initialize("db", 3, 5, create, destroy) // create a pool of 5 resources
 }
 
 func final() {
-	P := pool.Get("db")
+	P := pool.Name("db")
 	P.Drain() // free up all resources
 }
 
@@ -46,16 +46,20 @@ func main() {
 
 func work(i int) {
 	fmt.Println("Start Work id: ", i)
-	P := pool.Get("db")
+	P := pool.Name("db")
 	resource := P.Acquire() // obtain the resource
-	if i%2 == 0 {
-		time.Sleep(time.Microsecond * 1)
+	if resource == nil {
+		fmt.Println("Not enough resources to run: ", i)
 	} else {
-		time.Sleep(time.Microsecond * 2)
+		if i%2 == 0 {
+			time.Sleep(time.Microsecond * 1)
+		} else {
+			time.Sleep(time.Microsecond * 2)
+		}
+		fmt.Println("Work id: ", i, " Resource id: ", resource)
+		P.Release(resource)
+		fmt.Println("End Work id: ", i)
 	}
-	fmt.Println("Work id: ", i, " Resource id: ", resource, " Count: ", P.Count, " Inuse: ", P.Inuse)
-	P.Release(resource)
-	fmt.Println("End Work id: ", i)
 }
 
 func resourceNew() (r resource_symulator) {
