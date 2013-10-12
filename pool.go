@@ -191,7 +191,7 @@ func (p *ResourcePool) Cap() uint {
 	return uint(cap(p.resources))
 }
 
-// Reterns how many resources in we need to add to the reserve to reach min
+// Reterns how many resources we need to add to the pool, to get the reserve to reach min
 func (p *ResourcePool) Short() (need uint) {
 	an := p.AvailableNow()
 	if an < p.min {
