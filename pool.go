@@ -153,10 +153,10 @@ func (p *ResourcePool) Destroy(wrapper resourceWrapper) {
 }
 
 /*
- * Remove all resources from the Pool and call the destroy method on each of
- * them. Then close the channel.
+ * Remove all resources from the Pool.
+ * Then close the pool.
  */
-func (p *ResourcePool) Drain() {
+func (p *ResourcePool) Close() {
 	for {
 		select {
 		case resource := <-p.resources:

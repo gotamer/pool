@@ -128,23 +128,30 @@ func TestResourceRelease(t *testing.T) {
 	}
 }
 
-/*
-func TestDrain(t *testing.T) {
-	i := 0
-	create := func() interface{} {
-		return "test"
+func TestClose(t *testing.T) {
+	var min, max uint
+	min = 10
+	max = 50
+	var i int
+	var db *resource_symulator
+	var err error
+	create := func() (interface{}, error) {
+		db, err = resourceNew()
+		return db, err
 	}
-	destroy := func(interface{}) {
+	destroy := func(r interface{}) error {
 		i++
+		return db.resourceDel()
 	}
-	Initialize("db", 5, 50, create, destroy)
+	err = NewResourcePool("db", min, max, create, destroy)
 	p := Name("db")
-	p.Drain()
-	if i != 5 {
-		t.Errorf("Drain did not call the destroy function 5 times.  Destroy was called %d times", i)
+	count := int(p.Count())
+	p.Close()
+	if i != count {
+		t.Errorf("Close was not called correct times. It was called %d and should have been called  %d times", i, count)
 	}
 }
-*/
+
 /*
 func TestAcquireWithTimeout(t *testing.T) {
 	create := func() interface{} {

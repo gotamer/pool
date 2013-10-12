@@ -25,7 +25,7 @@ func main() {
 	// use resource ... db what ever
 	rp.Release(resource) // return resource to the pool
 	...
-	rp.Drain() // free up all resources and close the pool
+	rp.Close() // free up all resources and close the pool
 }
 ```
 
