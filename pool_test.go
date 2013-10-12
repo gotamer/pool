@@ -37,7 +37,7 @@ func TestIntialize(t *testing.T) {
 	destroy := func(r interface{}) error {
 		return db.resourceDel()
 	}
-	err = NewResourcePool("db", 2, 5, create, destroy)
+	err = Register("db", 2, 5, create, destroy)
 	if err != nil {
 		t.Errorf("Resource error: %s", err.Error())
 	}
@@ -64,7 +64,7 @@ func TestResourceRelease(t *testing.T) {
 	var min, max uint
 	min = 10
 	max = 50
-	err = NewResourcePool("db", min, max, create, destroy)
+	err = Register("db", min, max, create, destroy)
 	p := Name("db")
 	if p.Cap() != max {
 		t.Errorf("Pool size incorrect. Should be %d but is %d", max, len(p.resources))
@@ -143,7 +143,7 @@ func TestClose(t *testing.T) {
 		i++
 		return db.resourceDel()
 	}
-	err = NewResourcePool(name, min, max, create, destroy)
+	err = Register(name, min, max, create, destroy)
 	p := Name(name)
 	count := int(p.Count())
 	p.Close(name)

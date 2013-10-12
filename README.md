@@ -16,7 +16,7 @@ func init(){
 		db := resource.(*sql.DB)
 		return db.Close() 
 	}
-	err = NewResourcePool("db1", 10, 20, resourceOpen, resourceClose)
+	err = Register("db1", 10, 20, resourceOpen, resourceClose)
 }
 
 func main() {
@@ -34,7 +34,7 @@ func main() {
 - Simple interface
 - Lazy creation of resources (create resources when needed, but keep a min on hand)
 
-### Note
+### Notes
 - Not backwards compadable with version 1,2 and 3
 - db.resourceDel() "as in db.Close()" must return errors just as go sql databases do
 

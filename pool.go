@@ -28,7 +28,7 @@ type resourceWrapper struct {
 /*
  * Creates a new resource Pool
  */
-func NewResourcePool(name string, min uint, max uint, o func() (interface{}, error), c func(interface{}) error) (err error) {
+func Register(name string, min uint, max uint, o func() (interface{}, error), c func(interface{}) error) (err error) {
 	p := new(ResourcePool)
 	p.min = min
 	p.resources = make(chan resourceWrapper, max)
