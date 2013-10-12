@@ -57,6 +57,7 @@ func NewResourcePool(name string, min uint, max uint, o func() (interface{}, err
 func (p *ResourcePool) add() (err error) {
 	p.mx.Lock()
 	defer p.mx.Unlock()
+	// make sure we are not going over limit
 	if p.Cap() > p.Count() {
 		resource, err := p.resOpen()
 		var ok bool
@@ -82,9 +83,6 @@ func Name(name string) *ResourcePool {
 func (p *ResourcePool) Get() (resource resourceWrapper, err error) {
 	return p.get()
 }
-
-var counter int
-var chanResourceWait = make(chan *ResourcePool)
 
 // Fetch a new resource
 func (p *ResourcePool) get() (resource resourceWrapper, err error) {
@@ -194,6 +192,7 @@ func (p *ResourcePool) Cap() uint {
 	return uint(cap(p.resources))
 }
 
+// Reterns how many resources in we need to add to the reserve to reach min
 func (p *ResourcePool) Short() (need uint) {
 	an := p.AvailableNow()
 	if an < p.min {
