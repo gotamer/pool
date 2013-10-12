@@ -1,7 +1,6 @@
 package pool
 
 import (
-	//"fmt"
 	"testing"
 	"time"
 )
@@ -129,6 +128,7 @@ func TestResourceRelease(t *testing.T) {
 }
 
 func TestClose(t *testing.T) {
+	name := "db"
 	var min, max uint
 	min = 10
 	max = 50
@@ -143,28 +143,11 @@ func TestClose(t *testing.T) {
 		i++
 		return db.resourceDel()
 	}
-	err = NewResourcePool("db", min, max, create, destroy)
-	p := Name("db")
+	err = NewResourcePool(name, min, max, create, destroy)
+	p := Name(name)
 	count := int(p.Count())
-	p.Close()
+	p.Close(name)
 	if i != count {
 		t.Errorf("Close was not called correct times. It was called %d and should have been called  %d times", i, count)
 	}
 }
-
-/*
-func TestAcquireWithTimeout(t *testing.T) {
-	create := func() interface{} {
-		return "test"
-	}
-	destroy := func(interface{}) {
-	}
-	Initialize("db", 1, create, destroy)
-	p := Name("db")
-	p.Resource()
-	r2 := p.AcquireWithTimeout(time.Millisecond * 1)
-	if r2 != nil {
-		t.Errorf("A timed out acquire should return nil")
-	}
-}
-*/

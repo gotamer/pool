@@ -150,21 +150,20 @@ func (p *ResourcePool) Destroy(wrapper resourceWrapper) {
 	}
 }
 
-/*
- * Remove all resources from the Pool.
- * Then close the pool.
- */
-func (p *ResourcePool) Close() {
+// Remove all resources from the Pool.
+// Then close the pool.
+// Then delete the pool from pools
+func (p *ResourcePool) Close(name string) {
 	for {
 		select {
 		case resource := <-p.resources:
 			p.resClose(resource)
-			p.inUse--
 		default:
+			close(p.resources)
+			delete(pools, name)
 			return
 		}
 	}
-	close(p.resources)
 }
 
 // Resources already obtained and available for use
