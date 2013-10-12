@@ -2,135 +2,202 @@
 package pool
 
 import (
+	"fmt"
+	"log"
 	"sync"
 	"time"
 )
 
-var pools = make(map[string]*pool)
+var pools = make(map[string]*ResourcePool)
 
-type pool struct {
+// ResourcePool allows you to use a pool of resources.
+type ResourcePool struct {
 	mx        sync.RWMutex
-	count     uint
-	inuse     uint
-	max       uint
-	min       uint // Minimum Available
-	resources chan interface{}
-	create    func() interface{}
-	destroy   func(interface{})
+	min       uint // Minimum Available resources
+	inUse     uint
+	resources chan resourceWrapper
+	resOpen   func() (interface{}, error)
+	resClose  func(interface{}) error
+}
+
+type resourceWrapper struct {
+	resource interface{}
+	timeUsed time.Time
 }
 
 /*
  * Creates a new resource Pool
  */
-func Initialize(name string, min uint, max uint, create func() interface{}, destroy func(interface{})) {
-	p := new(pool)
-	p.max = max
+func NewResourcePool(name string, min uint, max uint, o func() (interface{}, error), c func(interface{}) error) (err error) {
+	p := new(ResourcePool)
 	p.min = min
-	p.resources = make(chan interface{}, max)
-	p.create = create
-	p.destroy = destroy
+	p.resources = make(chan resourceWrapper, max)
+	p.resOpen = o
+	p.resClose = c
+
 	for i := uint(0); i < min; i++ {
-		p.count++
-		resource := p.create()
-		p.resources <- resource
+		resource, err := p.resOpen()
+		if err == nil {
+			var wrapper resourceWrapper
+			wrapper.resource = resource
+			p.resources <- wrapper
+		} else {
+			break
+		}
 	}
-	pools[name] = p
+	for i := uint(0); i < max-min; i++ {
+		p.resources <- resourceWrapper{}
+	}
+	if err == nil {
+		pools[name] = p
+	}
+	return
 }
 
-func (p *pool) add() {
+func (p *ResourcePool) add() (err error) {
 	p.mx.Lock()
-	p.count++
-	resource := p.create()
-	p.resources <- resource
-	p.mx.Unlock()
+	defer p.mx.Unlock()
+	if p.Cap() > p.Count() {
+		resource, err := p.resOpen()
+		var ok bool
+		if err == nil {
+			var wrapper resourceWrapper
+			wrapper.resource = resource
+			if ok {
+				p.resources <- wrapper
+			}
+		}
+	}
+	return
 }
 
-func Name(name string) (p *pool) {
+// Will return a pool
+func Name(name string) *ResourcePool {
 	return pools[name]
 }
 
-/*
- * Obtain a resource from the Pool.
- * Returns nil if there are no more resources available (Set pool.max)
- */
-func (p *pool) Resource() interface{} {
-Waiting:
-	p.mx.Lock()
-	defer p.mx.Unlock()
-	if p.inuse < p.count {
-		p.inuse++
-	} else if p.count < p.max {
-		resource := p.create()
-		p.resources <- resource
-		p.count++
-		p.inuse++
-	} else if p.count >= p.max {
-		return nil // No resources availabe
-	} else {
-		p.mx.Unlock()
-		goto Waiting
-	}
-	if p.count < p.min {
-		go p.add()
-	}
-	return <-p.resources
+// Get will return the next available resource. If capacity
+// has not been reached, it will create a new one using the factory. Otherwise,
+// it will indefinitely wait untill the next resource becomes available.
+func (p *ResourcePool) Get() (resource resourceWrapper, err error) {
+	return p.get()
 }
 
-/*
- * Obtain a resource from the Pool but only wait for a specified duration.
- * If the duration expires return nil.
- */
-func (p *pool) AcquireWithTimeout(timeout time.Duration) interface{} {
-	var resource interface{}
-	select {
-	case resource = <-p.resources:
-	case <-time.After(timeout):
-		return nil
+var counter int
+var chanResourceWait = make(chan *ResourcePool)
+
+// Fetch a new resource
+func (p *ResourcePool) get() (resource resourceWrapper, err error) {
+	p.mx.Lock()
+	defer p.mx.Unlock()
+
+	var wrapper resourceWrapper
+	var ok bool
+	for {
+		if p.AvailableNow() != 0 {
+			select {
+			case wrapper, ok = <-p.resources:
+			default:
+				wrapper, ok = <-p.resources
+			}
+			if !ok {
+				return wrapper, fmt.Errorf("ResourcePool is closed")
+			}
+			break
+		} else if p.AvailableMax() != 0 {
+			wrapper.resource, err = p.resOpen()
+			if err == nil {
+				p.resources <- wrapper
+			}
+			break
+		}
 	}
-	return resource
+
+	if p.AvailableNow() < p.min && p.Cap() > p.Count() {
+		go p.add()
+	}
+	p.inUse++
+	return wrapper, err
 }
 
 /*
  * Returns a resource back in to the Pool
  */
-func (p *pool) Release(resource interface{}) {
+func (p *ResourcePool) Release(wrapper resourceWrapper) {
 	p.mx.Lock()
 	defer p.mx.Unlock()
-	if p.count-p.inuse > p.min {
-		p.destroy(resource)
-		p.count--
+	if p.AvailableNow() > p.min {
+		if err := p.resClose(wrapper.resource); err != nil {
+			log.Println("Resource close error: ", err)
+		} else {
+			p.inUse--
+		}
 	} else {
-		p.resources <- resource
+		p.resources <- wrapper
+		p.inUse--
 	}
-	p.inuse--
 }
 
 /*
  * Remove a resource from the Pool.  This is helpful if the resource
  * has gone bad.  A new resource will be created in it's place.
  */
-func (p *pool) Destroy(resource interface{}) {
+func (p *ResourcePool) Destroy(wrapper resourceWrapper) {
 	p.mx.Lock()
 	defer p.mx.Unlock()
-	p.destroy(resource)
-	p.count--
-	p.inuse--
+	if err := p.resClose(wrapper.resource); err != nil {
+		log.Println("Resource close error: ", err)
+	} else {
+		p.inUse--
+	}
 }
 
 /*
  * Remove all resources from the Pool and call the destroy method on each of
- * them.
+ * them. Then close the channel.
  */
-func (p *pool) Drain() {
+func (p *ResourcePool) Drain() {
 	for {
 		select {
-		case r := <-p.resources:
-			p.inuse--
-			p.count--
-			p.destroy(r)
+		case resource := <-p.resources:
+			p.resClose(resource)
+			p.inUse--
 		default:
 			return
 		}
 	}
 	close(p.resources)
+}
+
+// Resources already obtained and available for use
+func (p *ResourcePool) AvailableNow() uint {
+	return uint(len(p.resources))
+}
+
+// Total # of resoureces including the once we haven't yet created - whats in use
+func (p *ResourcePool) AvailableMax() uint {
+	return p.Cap() - p.inUse
+}
+
+// Count of resources open (should be less theen Cap())
+func (p *ResourcePool) Count() uint {
+	return p.inUse + p.AvailableNow()
+}
+
+// Resources being used right now
+func (p *ResourcePool) InUse() uint {
+	return p.inUse
+}
+
+// Max resources the pool allows; all in use, obtained, and not obtained.
+func (p *ResourcePool) Cap() uint {
+	return uint(cap(p.resources))
+}
+
+func (p *ResourcePool) Short() (need uint) {
+	an := p.AvailableNow()
+	if an < p.min {
+		need = p.min - an
+	}
+	return
 }
