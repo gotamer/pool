@@ -9,12 +9,12 @@ import "pool"
 
 func init(){
 	resourceOpen := func() (interface{}, error) {
-		db, err := resourceNew()
+		db, err := sql.Open("sqlite3", "/tmp/fool.db")
 		return db, err
 	}
 	resourceClose := func(r interface{}) error {
 		db := resource.(*sql.DB)
-		return db.resourceDel() 
+		return db.Close() 
 	}
 	err = NewResourcePool("db1", 10, 20, resourceOpen, resourceClose)
 }
