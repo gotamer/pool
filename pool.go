@@ -1,4 +1,4 @@
-// A generic resource pool
+// A generic resource pool for databases etc
 package pool
 
 import (

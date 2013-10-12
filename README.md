@@ -8,28 +8,34 @@ package main
 import "pool"
 
 func init(){
-	create := func() (interface{}) {
-	  return "resource" // return a resource
+	resourceOpen := func() (interface{}, error) {
+		db, err := resourceNew()
+		return db, err
 	}
-	destroy := func(resource interface{}) {
-	  // clean up resource
+	resourceClose := func(r interface{}) error {
+		db := resource.(*sql.DB)
+		return db.resourceDel() 
 	}
-	// create a pool named "myDB" with min 5 and max 10 resources
-	pool.Initialize("myDB", 5, 10, create, destroy) 	
+	err = NewResourcePool("db1", 10, 20, resourceOpen, resourceClose)
 }
 
 func main() {
-	rp := pool.Name("myDB")
-	resource := rp.Resource() // obtain the resource
+	rp := pool.Name("db1")
+	resource, err := rp.Get() // obtain a resource
 	// use resource ... db what ever
 	rp.Release(resource) // return resource to the pool
-	rp.Drain() // free up all resources
+	...
+	rp.Drain() // free up all resources and close the pool
 }
 ```
 
 ### Features
 
 - Simple interface
-- Very little code
 - Lazy creation of resources (create resources when needed, but keep a min on hand)
 
+### Note
+-  db.resourceDel() "as in db.Close()" must return errors just as go sql databases do
+
+### ToDo
+- Find a better way to handle errors when closing resources
